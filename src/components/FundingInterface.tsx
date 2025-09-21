@@ -233,14 +233,14 @@ const FundingInterface: React.FC<FundingInterfaceProps> = ({
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom duration-700">
       {/* Error and Transaction Status */}
       {error && (
-        <Badge variant="destructive" className="mb-6">
+        <div className="mb-6 text-red-500 w-full py-3 px-4 bg-red-300">
           {error}
-        </Badge>
+        </div>
       )}
       {transactionStatus && (
-        <Badge variant="outline" className="mb-6 bg-success/10 text-success">
+        <div className="mb-6 text-success w-full py-3 px-4 bg-green-300">
           {transactionStatus}
-        </Badge>
+        </div>
       )}
 
       {/* Funding Overview */}
