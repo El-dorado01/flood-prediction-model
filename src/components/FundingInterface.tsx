@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
   Heart,
@@ -21,48 +21,233 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
+import {
+  depositAsSponsor,
+  depositAsInvestor,
+  readFundsInfo,
+  addBeneficiary,
+  manualDisbursement,
+} from "@/lib/contractActions";
 
-const FundingInterface: React.FC = () => {
+interface FundingData {
+  totalFunds: string;
+  sponsorFunds: string;
+  investorFunds: string;
+}
+
+interface FundingInterfaceProps {
+  account: string | null;
+  isConnected: boolean;
+  isCorrectNetwork: boolean;
+  error: string | null;
+  isLoading: boolean;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const FundingInterface: React.FC<FundingInterfaceProps> = ({
+  account,
+  isConnected,
+  isCorrectNetwork,
+  error,
+  isLoading,
+  setIsLoading,
+}) => {
   const [sponsorAmount, setSponsorAmount] = useState("");
   const [investorAmount, setInvestorAmount] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [beneficiaryAddress, setBeneficiaryAddress] = useState("");
+  const [transactionStatus, setTransactionStatus] = useState<string | null>(
+    null
+  );
+  const [fundingData, setFundingData] = useState<FundingData | null>(null);
+  const fundingGoal = 200; // Static goal in ETH, configurable via .env if needed
 
-  // Mock data
-  const totalFunds = 125000;
-  const sponsorFunds = 75000;
-  const investorFunds = 50000;
-  const beneficiaries = 12;
-  const fundingGoal = 200000;
-  const progressPercentage = (totalFunds / fundingGoal) * 100;
+  // Fetch funding data on mount
+  useEffect(() => {
+    const fetchFundingData = async () => {
+      if (!isConnected || !isCorrectNetwork) return;
+      setIsLoading(true);
+      setTransactionStatus(null);
+      try {
+        const data = await readFundsInfo();
+        setFundingData({
+          totalFunds: data.totalFunds,
+          sponsorFunds: data.sponsorFunds,
+          investorFunds: data.investorFunds,
+        });
+      } catch (err: any) {
+        setTransactionStatus(err.message || "Failed to fetch funding data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchFundingData();
+  }, [isConnected, isCorrectNetwork, setIsLoading]);
+
+  const progressPercentage = fundingData
+    ? (Number(fundingData.totalFunds) / fundingGoal) * 100
+    : 0;
 
   const handleSponsorSubmit = async () => {
-    if (!sponsorAmount) return;
-    setIsProcessing(true);
-    // Simulate transaction
-    setTimeout(() => {
-      setIsProcessing(false);
+    if (!isConnected) {
+      setTransactionStatus("Please connect your wallet first");
+      return;
+    }
+    if (!isCorrectNetwork) {
+      setTransactionStatus("Please switch to the Primordial BlockDAG Testnet");
+      return;
+    }
+    if (
+      !sponsorAmount ||
+      isNaN(Number(sponsorAmount)) ||
+      Number(sponsorAmount) <= 0
+    ) {
+      setTransactionStatus("Please enter a valid sponsorship amount");
+      return;
+    }
+    setIsLoading(true);
+    setTransactionStatus(null);
+    try {
+      await depositAsSponsor(sponsorAmount);
+      setTransactionStatus(`Successfully sponsored ${sponsorAmount} ETH`);
       setSponsorAmount("");
-    }, 3000);
+      // Refresh funding data
+      const data = await readFundsInfo();
+      setFundingData({
+        totalFunds: data.totalFunds,
+        sponsorFunds: data.sponsorFunds,
+        investorFunds: data.investorFunds,
+      });
+    } catch (err: any) {
+      setTransactionStatus(err.message || "Failed to sponsor");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInvestorSubmit = async () => {
-    if (!investorAmount) return;
-    setIsProcessing(true);
-    // Simulate transaction
-    setTimeout(() => {
-      setIsProcessing(false);
+    if (!isConnected) {
+      setTransactionStatus("Please connect your wallet first");
+      return;
+    }
+    if (!isCorrectNetwork) {
+      setTransactionStatus("Please switch to the Primordial BlockDAG Testnet");
+      return;
+    }
+    if (
+      !investorAmount ||
+      isNaN(Number(investorAmount)) ||
+      Number(investorAmount) <= 0
+    ) {
+      setTransactionStatus("Please enter a valid investment amount");
+      return;
+    }
+    setIsLoading(true);
+    setTransactionStatus(null);
+    try {
+      await depositAsInvestor(investorAmount);
+      setTransactionStatus(`Successfully invested ${investorAmount} ETH`);
       setInvestorAmount("");
-    }, 3000);
+      // Refresh funding data
+      const data = await readFundsInfo();
+      setFundingData({
+        totalFunds: data.totalFunds,
+        sponsorFunds: data.sponsorFunds,
+        investorFunds: data.investorFunds,
+      });
+    } catch (err: any) {
+      setTransactionStatus(err.message || "Failed to invest");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddBeneficiary = async () => {
+    if (!isConnected) {
+      setTransactionStatus("Please connect your wallet first");
+      return;
+    }
+    if (!isCorrectNetwork) {
+      setTransactionStatus("Please switch to the Primordial BlockDAG Testnet");
+      return;
+    }
+    if (
+      !beneficiaryAddress ||
+      !/^0x[a-fA-F0-9]{40}$/.test(beneficiaryAddress)
+    ) {
+      setTransactionStatus("Please enter a valid Ethereum address");
+      return;
+    }
+    setIsLoading(true);
+    setTransactionStatus(null);
+    try {
+      await addBeneficiary(beneficiaryAddress);
+      setTransactionStatus(
+        `Successfully added beneficiary ${beneficiaryAddress.slice(0, 6)}...`
+      );
+      setBeneficiaryAddress("");
+      // Refresh funding data
+      const data = await readFundsInfo();
+      setFundingData({
+        totalFunds: data.totalFunds,
+        sponsorFunds: data.sponsorFunds,
+        investorFunds: data.investorFunds,
+      });
+    } catch (err: any) {
+      setTransactionStatus(err.message || "Failed to add beneficiary");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleManualDisbursement = async () => {
+    if (!isConnected) {
+      setTransactionStatus("Please connect your wallet first");
+      return;
+    }
+    if (!isCorrectNetwork) {
+      setTransactionStatus("Please switch to the Primordial BlockDAG Testnet");
+      return;
+    }
+    setIsLoading(true);
+    setTransactionStatus(null);
+    try {
+      await manualDisbursement();
+      setTransactionStatus("Successfully triggered manual disbursement");
+      // Refresh funding data
+      const data = await readFundsInfo();
+      setFundingData({
+        totalFunds: data.totalFunds,
+        sponsorFunds: data.sponsorFunds,
+        investorFunds: data.investorFunds,
+      });
+    } catch (err: any) {
+      setTransactionStatus(err.message || "Failed to trigger disbursement");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom duration-700">
+      {/* Error and Transaction Status */}
+      {error && (
+        <Badge variant="destructive" className="mb-6">
+          {error}
+        </Badge>
+      )}
+      {transactionStatus && (
+        <Badge variant="outline" className="mb-6 bg-success/10 text-success">
+          {transactionStatus}
+        </Badge>
+      )}
+
       {/* Funding Overview */}
       <Card className="shadow-lg hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white via-slate-50/50 to-blue-50/30 backdrop-blur-sm">
         <CardHeader className="text-center pb-8">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-500 shadow-lg">
-            <Heart className="h-8 w-8 text-red drop-shadow-md" />
+            <Heart className="h-8 w-8 text-white drop-shadow-md" />
           </div>
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
             Community Disaster Relief Fund
@@ -72,31 +257,33 @@ const FundingInterface: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8">
             <div className="text-center p-4 rounded-lg bg-white/60 border border-slate-200/50 shadow-sm">
-              <div className="text-3xl font-bold text-blue-600 mb-1">$125K</div>
+              <div className="text-3xl font-bold text-blue-600 mb-1">
+                {fundingData
+                  ? `${Number(fundingData.totalFunds).toFixed(2)} ETH`
+                  : "N/A"}
+              </div>
               <p className="text-sm text-slate-600 font-medium">Total Funds</p>
             </div>
             <div className="text-center p-4 rounded-lg bg-white/60 border border-slate-200/50 shadow-sm">
-              <div className="text-3xl font-bold text-green-600 mb-1">$75K</div>
+              <div className="text-3xl font-bold text-green-600 mb-1">
+                {fundingData
+                  ? `${Number(fundingData.sponsorFunds).toFixed(2)} ETH`
+                  : "N/A"}
+              </div>
               <p className="text-sm text-slate-600 font-medium">
                 Sponsor Funds
               </p>
             </div>
             <div className="text-center p-4 rounded-lg bg-white/60 border border-slate-200/50 shadow-sm">
               <div className="text-3xl font-bold text-purple-600 mb-1">
-                $50K
+                {fundingData
+                  ? `${Number(fundingData.investorFunds).toFixed(2)} ETH`
+                  : "N/A"}
               </div>
               <p className="text-sm text-slate-600 font-medium">
                 Investor Funds
-              </p>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-white/60 border border-slate-200/50 shadow-sm">
-              <div className="text-3xl font-bold text-orange-600 mb-1">
-                {beneficiaries}
-              </div>
-              <p className="text-sm text-slate-600 font-medium">
-                Beneficiaries
               </p>
             </div>
           </div>
@@ -105,7 +292,10 @@ const FundingInterface: React.FC = () => {
             <div className="flex justify-between text-sm font-medium">
               <span className="text-slate-700">Progress to Goal</span>
               <span className="text-slate-900">
-                ${totalFunds.toLocaleString()} / ${fundingGoal.toLocaleString()}
+                {fundingData
+                  ? `${Number(fundingData.totalFunds).toFixed(2)} ETH`
+                  : "N/A"}{" "}
+                / {fundingGoal} ETH
               </span>
             </div>
             <Progress value={progressPercentage} className="h-4 bg-slate-200" />
@@ -114,7 +304,12 @@ const FundingInterface: React.FC = () => {
                 {Math.round(progressPercentage)}% funded
               </span>
               <span className="text-slate-600">
-                ${(fundingGoal - totalFunds).toLocaleString()} remaining
+                {fundingData
+                  ? `${(fundingGoal - Number(fundingData.totalFunds)).toFixed(
+                      2
+                    )} ETH`
+                  : "N/A"}{" "}
+                remaining
               </span>
             </div>
           </div>
@@ -169,6 +364,7 @@ const FundingInterface: React.FC = () => {
                   value={sponsorAmount}
                   onChange={(e) => setSponsorAmount(e.target.value)}
                   className="text-lg h-12 border-2 border-slate-200 focus:border-green-400 transition-colors"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -196,10 +392,14 @@ const FundingInterface: React.FC = () => {
                 size="lg"
                 className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                 onClick={handleSponsorSubmit}
-                disabled={!sponsorAmount || isProcessing}
+                disabled={!sponsorAmount || isLoading}
               >
-                <Heart className="h-5 w-5 mr-2" />
-                {isProcessing ? "Processing..." : "Sponsor Community Relief"}
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                ) : (
+                  <Heart className="h-5 w-5 mr-2" />
+                )}
+                {isLoading ? "Processing..." : "Sponsor Community Relief"}
               </Button>
             </CardContent>
           </Card>
@@ -234,6 +434,7 @@ const FundingInterface: React.FC = () => {
                   value={investorAmount}
                   onChange={(e) => setInvestorAmount(e.target.value)}
                   className="text-lg h-12 border-2 border-slate-200 focus:border-blue-400 transition-colors"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -279,10 +480,14 @@ const FundingInterface: React.FC = () => {
                 size="lg"
                 className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                 onClick={handleInvestorSubmit}
-                disabled={!investorAmount || isProcessing}
+                disabled={!investorAmount || isLoading}
               >
-                <TrendingUp className="h-5 w-5 mr-2" />
-                {isProcessing ? "Processing..." : "Invest in Community Safety"}
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                ) : (
+                  <TrendingUp className="h-5 w-5 mr-2" />
+                )}
+                {isLoading ? "Processing..." : "Invest in Community Safety"}
               </Button>
             </CardContent>
           </Card>
@@ -304,15 +509,7 @@ const FundingInterface: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-6 border-2 border-slate-200 rounded-lg bg-white hover:border-slate-300 transition-colors">
-              <div className="text-3xl font-bold text-green-600 mb-2">
-                {beneficiaries}
-              </div>
-              <p className="text-sm text-slate-600 font-medium">
-                Active Beneficiaries
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="text-center p-6 border-2 border-slate-200 rounded-lg bg-white hover:border-slate-300 transition-colors">
               <div className="text-3xl font-bold text-blue-600 mb-2">Auto</div>
               <p className="text-sm text-slate-600 font-medium">
@@ -330,6 +527,53 @@ const FundingInterface: React.FC = () => {
                 System Status
               </p>
             </div>
+            {/* TODO: Reintroduce Active Beneficiaries card when getBeneficiariesCount function is available */}
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <Label
+                htmlFor="beneficiary-address"
+                className="text-sm font-semibold text-slate-700"
+              >
+                Add Beneficiary (Ethereum Address)
+              </Label>
+              <Input
+                id="beneficiary-address"
+                type="text"
+                placeholder="0x..."
+                value={beneficiaryAddress}
+                onChange={(e) => setBeneficiaryAddress(e.target.value)}
+                className="text-lg h-12 border-2 border-slate-200 focus:border-blue-400 transition-colors"
+                disabled={isLoading}
+              />
+            </div>
+            <Button
+              size="lg"
+              className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              onClick={handleAddBeneficiary}
+              disabled={!beneficiaryAddress || isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                <Users className="h-5 w-5 mr-2" />
+              )}
+              {isLoading ? "Processing..." : "Add Beneficiary"}
+            </Button>
+            <Button
+              size="lg"
+              className="w-full h-14 bg-red-600 hover:bg-red-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              onClick={handleManualDisbursement}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+              ) : (
+                <DollarSign className="h-5 w-5 mr-2" />
+              )}
+              {isLoading ? "Processing..." : "Trigger Manual Disbursement"}
+            </Button>
           </div>
         </CardContent>
       </Card>

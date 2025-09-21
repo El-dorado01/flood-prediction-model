@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -18,7 +18,10 @@ import {
   Clock,
   RefreshCw,
 } from "lucide-react";
+import { readOnChainMetrics, sendDataToContract } from "@/lib/contractActions";
+import { FloodMetrics } from "@/types/noaa";
 
+// Define ThreatLevel interface for UI
 interface ThreatLevel {
   level: "low" | "medium" | "high";
   label: string;
@@ -26,18 +29,92 @@ interface ThreatLevel {
   color: string;
 }
 
-const FloodDashboard: React.FC = () => {
-  const [currentThreat] = useState<ThreatLevel>({
-    level: "medium",
-    label: "Medium Risk",
-    description: "Water levels are elevated but stable",
-    color: "yellow",
+interface FloodDashboardProps {
+  account: string | null;
+  isConnected: boolean;
+  isCorrectNetwork: boolean;
+  error: string | null;
+  isLoading: boolean;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const FloodDashboard: React.FC<FloodDashboardProps> = ({
+  account,
+  isConnected,
+  isCorrectNetwork,
+  error,
+  isLoading,
+  setIsLoading,
+}) => {
+  const [metrics, setMetrics] = useState<FloodMetrics | null>(null);
+  const [threatLevel, setThreatLevel] = useState<number | null>(null);
+  const [transactionStatus, setTransactionStatus] = useState<string | null>(null);
+
+  // Map numeric threatLevel from readOnChainMetrics to FloodMetrics with floodRisk
+  const mapToFloodMetrics = (data: {
+    waterLevel: number;
+    tidePrediction: number;
+    currentSpeed: number;
+    threatLevel: number;
+  }): FloodMetrics => ({
+    waterLevel: data.waterLevel,
+    tidePrediction: data.tidePrediction,
+    currentSpeed: data.currentSpeed,
+    floodRisk: data.threatLevel >= 2, // Map threatLevel >= 2 to true, 1 to false
   });
 
-  const [waterLevel] = useState(85);
-  const [tideHeight] = useState(72);
-  const [currentSpeed] = useState(45);
-  const [isUpdating, setIsUpdating] = useState(false);
+  // Map threatLevel (number) to ThreatLevel for UI
+  const mapThreatLevel = (threatLevel: number | null): ThreatLevel => {
+    switch (threatLevel) {
+      case 1:
+        return {
+          level: "low",
+          label: "Low Risk",
+          description: "Water levels are normal and stable",
+          color: "green",
+        };
+      case 2:
+        return {
+          level: "medium",
+          label: "Medium Risk",
+          description: "Water levels are elevated but stable",
+          color: "yellow",
+        };
+      case 3:
+        return {
+          level: "high",
+          label: "High Risk",
+          description: "Critical water levels, immediate action required",
+          color: "red",
+        };
+      default:
+        return {
+          level: "low",
+          label: "Unknown",
+          description: "No valid threat level data",
+          color: "gray",
+        };
+    }
+  };
+
+  // Fetch initial metrics
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      if (!isConnected || !isCorrectNetwork) return;
+      setIsLoading(true);
+      setTransactionStatus(null);
+      try {
+        const fetchedMetrics = await readOnChainMetrics();
+        setMetrics(mapToFloodMetrics(fetchedMetrics));
+        setThreatLevel(fetchedMetrics.threatLevel);
+      } catch (err: any) {
+        setTransactionStatus(err.message || "Failed to fetch metrics");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMetrics();
+  }, [isConnected, isCorrectNetwork, setIsLoading]);
 
   const getThreatBadge = (threat: ThreatLevel) => {
     switch (threat.level) {
@@ -77,16 +154,51 @@ const FloodDashboard: React.FC = () => {
     return "bg-red-500";
   };
 
-  const handleUpdateMetrics = () => {
-    setIsUpdating(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsUpdating(false);
-    }, 2000);
+  const handleUpdateMetrics = async () => {
+    if (!isConnected) {
+      setTransactionStatus("Please connect your wallet first");
+      return;
+    }
+    if (!isCorrectNetwork) {
+      setTransactionStatus("Please switch to the Primordial BlockDAG Testnet");
+      return;
+    }
+    if (!metrics) {
+      setTransactionStatus("No metrics available to update");
+      return;
+    }
+    setIsLoading(true);
+    setTransactionStatus(null);
+    try {
+      await sendDataToContract(metrics);
+      setTransactionStatus("Successfully updated metrics on-chain");
+      // Refresh metrics after update
+      const fetchedMetrics = await readOnChainMetrics();
+      setMetrics(mapToFloodMetrics(fetchedMetrics));
+      setThreatLevel(fetchedMetrics.threatLevel);
+    } catch (err: any) {
+      setTransactionStatus(err.message || "Failed to update metrics");
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const currentThreat = mapThreatLevel(threatLevel);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom duration-700">
+      {/* Error and Transaction Status */}
+      {error && (
+        <Badge variant="destructive" className="mb-6">
+          {error}
+        </Badge>
+      )}
+      {transactionStatus && (
+        <Badge variant="outline" className="mb-6 bg-success/10 text-success">
+          {transactionStatus}
+        </Badge>
+      )}
+
       {/* Current Threat Status */}
       <Card className="shadow-lg hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-white to-slate-50/50 backdrop-blur-sm">
         <CardHeader className="text-center pb-6">
@@ -112,10 +224,13 @@ const FloodDashboard: React.FC = () => {
                   Water Level
                 </span>
                 <span className="text-sm font-bold text-blue-600">
-                  {waterLevel}%
+                  {metrics ? `${metrics.waterLevel} ft` : "N/A"}
                 </span>
               </div>
-              <Progress value={waterLevel} className="h-3 bg-slate-200" />
+              <Progress
+                value={metrics ? metrics.waterLevel : 0}
+                className={`h-3 bg-slate-200 ${getProgressColor(metrics ? metrics.waterLevel : 0)}`}
+              />
               <div className="text-xs text-slate-500">Threshold: 2.00m</div>
             </div>
 
@@ -125,10 +240,13 @@ const FloodDashboard: React.FC = () => {
                   Tide Height
                 </span>
                 <span className="text-sm font-bold text-cyan-600">
-                  {tideHeight}%
+                  {metrics ? `${metrics.tidePrediction} ft` : "N/A"}
                 </span>
               </div>
-              <Progress value={tideHeight} className="h-3 bg-slate-200" />
+              <Progress
+                value={metrics ? metrics.tidePrediction : 0}
+                className={`h-3 bg-slate-200 ${getProgressColor(metrics ? metrics.tidePrediction : 0)}`}
+              />
               <div className="text-xs text-slate-500">High tide at 3:42 PM</div>
             </div>
 
@@ -138,10 +256,13 @@ const FloodDashboard: React.FC = () => {
                   Current Speed
                 </span>
                 <span className="text-sm font-bold text-teal-600">
-                  {currentSpeed}%
+                  {metrics ? `${metrics.currentSpeed} kt` : "N/A"}
                 </span>
               </div>
-              <Progress value={currentSpeed} className="h-3 bg-slate-200" />
+              <Progress
+                value={metrics ? metrics.currentSpeed : 0}
+                className={`h-3 bg-slate-200 ${getProgressColor(metrics ? metrics.currentSpeed : 0)}`}
+              />
               <div className="text-xs text-slate-500">Increasing trend</div>
             </div>
           </div>
@@ -160,12 +281,17 @@ const FloodDashboard: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="text-3xl font-bold text-blue-700">15.2 ft</div>
+            <div className="text-3xl font-bold text-blue-700">
+              {metrics ? `${metrics.waterLevel} ft` : "N/A"}
+            </div>
             <p className="text-sm text-red-600 font-medium">
-              +2.3 ft from normal
+              {metrics ? `+${(metrics.waterLevel - 12.9).toFixed(1)} ft from normal` : "N/A"}
             </p>
             <div className="mt-3">
-              <Progress value={waterLevel} className="h-2 bg-blue-100" />
+              <Progress
+                value={metrics ? metrics.waterLevel : 0}
+                className={`h-2 bg-blue-100 ${getProgressColor(metrics ? metrics.waterLevel : 0)}`}
+              />
             </div>
           </CardContent>
         </Card>
@@ -180,10 +306,15 @@ const FloodDashboard: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="text-3xl font-bold text-cyan-700">High Tide</div>
+            <div className="text-3xl font-bold text-cyan-700">
+              {metrics ? `${metrics.tidePrediction} ft` : "N/A"}
+            </div>
             <p className="text-sm text-slate-600">Peak at 3:42 PM</p>
             <div className="mt-3">
-              <Progress value={tideHeight} className="h-2 bg-cyan-100" />
+              <Progress
+                value={metrics ? metrics.tidePrediction : 0}
+                className={`h-2 bg-cyan-100 ${getProgressColor(metrics ? metrics.tidePrediction : 0)}`}
+              />
             </div>
           </CardContent>
         </Card>
@@ -198,12 +329,17 @@ const FloodDashboard: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="text-3xl font-bold text-teal-700">3.8 kt</div>
+            <div className="text-3xl font-bold text-teal-700">
+              {metrics ? `${metrics.currentSpeed} kt` : "N/A"}
+            </div>
             <p className="text-sm text-orange-600 font-medium">
-              Increasing trend
+              {metrics ? "Increasing trend" : "N/A"}
             </p>
             <div className="mt-3">
-              <Progress value={currentSpeed} className="h-2 bg-teal-100" />
+              <Progress
+                value={metrics ? metrics.currentSpeed : 0}
+                className={`h-2 bg-teal-100 ${getProgressColor(metrics ? metrics.currentSpeed : 0)}`}
+              />
             </div>
           </CardContent>
         </Card>
@@ -215,14 +351,14 @@ const FloodDashboard: React.FC = () => {
           size="lg"
           className="flex items-center gap-2 bg-slate-700 hover:bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
           onClick={handleUpdateMetrics}
-          disabled={isUpdating}
+          disabled={isLoading}
         >
-          {isUpdating ? (
+          {isLoading ? (
             <RefreshCw className="h-4 w-4 animate-spin" />
           ) : (
             <Shield className="h-4 w-4" />
           )}
-          {isUpdating ? "Updating..." : "Update Metrics"}
+          {isLoading ? "Updating..." : "Update Metrics"}
         </Button>
 
         <Button

@@ -1,18 +1,121 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Waves, Users, TrendingUp, Eye, Heart } from "lucide-react";
+import {
+  Shield,
+  Waves,
+  Users,
+  TrendingUp,
+  Eye,
+  Heart,
+  Loader2,
+  LogOut,
+} from "lucide-react";
 import { sponsors } from "./sponsors";
+// import { readOnChainMetrics, depositAsSponsor } from "@/lib/contractActions";
 
-const Hero: React.FC = () => {
-  
+// Define local FloodMetrics type to match readOnChainMetrics output
+interface FloodMetrics {
+  waterLevel: number;
+  tidePrediction: number;
+  currentSpeed: number;
+  threatLevel: number;
+}
+
+interface HeroProps {
+  account: string | null;
+  isConnected: boolean;
+  isCorrectNetwork: boolean;
+  error: string | null;
+  isLoading: boolean;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  handleConnectWallet: () => Promise<void>;
+  handleSwitchNetwork: () => Promise<void>;
+  handleDisconnectWallet: () => void;
+}
+
+// Utility function to map threatLevel number to string
+const mapThreatLevelToString = (threatLevel: number): string => {
+  switch (threatLevel) {
+    case 1:
+      return "Low";
+    case 2:
+      return "Medium";
+    case 3:
+      return "High";
+    default:
+      return "Unknown";
+  }
+};
+
+const Hero: React.FC<HeroProps> = ({
+  account,
+  isConnected,
+  isCorrectNetwork,
+  error,
+  isLoading,
+  // setIsLoading,
+  handleConnectWallet,
+  handleSwitchNetwork,
+  handleDisconnectWallet,
+}) => {
+  // const [transactionStatus, setTransactionStatus] = useState<string | null>(
+  //   null
+  // );
+  // const [metrics, setMetrics] = useState<FloodMetrics | null>(null);
+  // const [showMetrics, setShowMetrics] = useState<boolean>(false);
+
+  // Monitor flood risk handler
+  // const handleMonitorFloodRisk = async () => {
+  //   if (!isConnected) {
+  //     setTransactionStatus("Please connect your wallet first");
+  //     return;
+  //   }
+  //   if (!isCorrectNetwork) {
+  //     setTransactionStatus("Please switch to the Primordial BlockDAG Testnet");
+  //     return;
+  //   }
+  //   setIsLoading(true);
+  //   setTransactionStatus(null);
+  //   try {
+  //     const fetchedMetrics = await readOnChainMetrics();
+  //     setMetrics(fetchedMetrics);
+  //     setShowMetrics(true);
+  //     setTransactionStatus("Successfully fetched flood metrics");
+  //   } catch (err: any) {
+  //     setTransactionStatus(err.message || "Failed to fetch flood metrics");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  // // Support community (deposit as sponsor) handler
+  // const handleSupportCommunity = async () => {
+  //   if (!isConnected) {
+  //     setTransactionStatus("Please connect your wallet first");
+  //     return;
+  //   }
+  //   if (!isCorrectNetwork) {
+  //     setTransactionStatus("Please switch to the Primordial BlockDAG Testnet");
+  //     return;
+  //   }
+  //   setIsLoading(true);
+  //   setTransactionStatus(null);
+  //   try {
+  //     await depositAsSponsor("0.1");
+  //     setTransactionStatus("Successfully deposited 0.1 ETH as sponsor!");
+  //   } catch (err: any) {
+  //     setTransactionStatus(err.message || "Failed to deposit as sponsor");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   return (
     <div className="relative min-h-screen overflow-hidden">
       {/* Background with overlay */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-[url('/hero-flood-prediction.jpg')]"
-      >
+      <div className="absolute inset-0 bg-cover bg-center bg-[url('/hero-flood-prediction.jpg')]">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background/80 to-background/90" />
       </div>
 
@@ -43,6 +146,68 @@ const Hero: React.FC = () => {
           🟢 System Online • Real-time Monitoring Active
         </Badge>
 
+        {/* Wallet status */}
+        <div className="mb-6 flex flex-wrap gap-4 justify-center">
+          {isConnected ? (
+            <>
+              <Badge variant="outline" className="bg-success/10 text-success">
+                Connected: {account?.slice(0, 6)}...{account?.slice(-4)}
+              </Badge>
+              {!isCorrectNetwork && (
+                <Button
+                  size="sm"
+                  onClick={handleSwitchNetwork}
+                  disabled={isLoading}
+                  className="bg-warning"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    "Switch to BlockDAG Testnet"
+                  )}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={handleDisconnectWallet}
+                disabled={isLoading}
+                className="bg-destructive/80"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Disconnect
+              </Button>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleConnectWallet}
+              disabled={isLoading}
+              className="bg-[#0c3355]"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Connect Wallet
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Error and transaction status */}
+        {error && (
+          <Badge variant="destructive" className="mb-6">
+            {error}
+          </Badge>
+        )}
+        {/* {transactionStatus && (
+          <Badge variant="outline" className="mb-6 bg-success/10 text-success">
+            {transactionStatus}
+          </Badge>
+        )} */}
+
         {/* Main heading */}
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-ocean bg-clip-text text-transparent animate-fade-in">
           FloodPredictor
@@ -60,15 +225,82 @@ const Hero: React.FC = () => {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 mb-16 animate-fade-in">
-          <Button size="lg" className="pulse-glow bg-[#0c3355]">
+          <Button
+            size="lg"
+            // onClick={handleMonitorFloodRisk}
+            // disabled={isLoading}
+            className="pulse-glow bg-[#0c3355]"
+          >
             <Eye className="h-5 w-5 mr-2" />
-            Monitor Flood Risk
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              "Monitor Flood Risk"
+            )}
           </Button>
-          <Button size="lg" className="bg-[#61b092]">
+          <Button
+            size="lg"
+            // onClick={handleSupportCommunity}
+            // disabled={isLoading}
+            className="bg-[#61b092]"
+          >
             <Heart className="h-5 w-5 mr-2" />
             Support Community
           </Button>
         </div>
+
+        {/* Metrics Display */}
+        {/* {showMetrics && metrics && (
+          <Card className="card-float glass-effect mb-16 w-full max-w-2xl animate-fade-in">
+            <CardContent className="p-6">
+              <h3 className="text-xl font-semibold mb-4 text-center">
+                Flood Risk Metrics
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Water Level
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {metrics.waterLevel} ft
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Tide Prediction
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {metrics.tidePrediction} ft
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Current Speed
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {metrics.currentSpeed} knots
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Threat Level
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {mapThreatLevelToString(metrics.threatLevel)}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-6 w-full"
+                onClick={() => setShowMetrics(false)}
+              >
+                Close
+              </Button>
+            </CardContent>
+          </Card>
+        )} */}
 
         {/* Feature cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl animate-fade-in">

@@ -1,23 +1,44 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Waves, Menu, X, Shield, TrendingUp, Eye } from "lucide-react";
+import {
+  Waves,
+  Menu,
+  X,
+  Shield,
+  TrendingUp,
+  Eye,
+  LogOut,
+  Loader2,
+} from "lucide-react";
+import Image from "next/image";
 
 interface NavigationProps {
   onSectionChange?: (section: string) => void;
   currentSection?: string;
+  account: string | null;
+  isConnected: boolean;
+  isCorrectNetwork: boolean;
+  error: string | null;
+  isLoading: boolean;
+  handleConnectWallet: () => Promise<void>;
+  handleSwitchNetwork: () => Promise<void>;
+  handleDisconnectWallet: () => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({
   onSectionChange,
   currentSection = "hero",
+  account,
+  isConnected,
+  isCorrectNetwork,
+  error,
+  isLoading,
+  handleConnectWallet,
+  handleSwitchNetwork,
+  handleDisconnectWallet,
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const handleSectionChange = (section: string) => {
-    onSectionChange?.(section);
-    setIsMobileMenuOpen(false);
-  };
 
   const navItems = [
     { id: "hero", label: "Home", icon: Waves },
@@ -32,10 +53,10 @@ const Navigation: React.FC<NavigationProps> = ({
           {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-ocean">
-              <Waves className="h-5 w-5 text-white" />
+              <Image src={"/logo.svg"} alt="Logo" width={30} height={30} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-primary">FloodPredictor</h1>
+              <h1 className="text-lg font-bold text-primary">AidFund</h1>
               <Badge variant="secondary" className="text-xs">
                 dApp
               </Badge>
@@ -51,8 +72,10 @@ const Navigation: React.FC<NavigationProps> = ({
                 <Button
                   key={item.id}
                   variant="ghost"
-                  onClick={() => handleSectionChange(item.id)}
-                  className={`flex items-center gap-2 ${isActive && "bg-[#0c3355]" }`}
+                  onClick={() => onSectionChange?.(item.id)}
+                  className={`flex items-center gap-2 text-black ${
+                    isActive && "bg-[#0c3355] text-accent"
+                  }`}
                 >
                   <Icon className="h-4 w-4" />
                   {item.label}
@@ -61,13 +84,54 @@ const Navigation: React.FC<NavigationProps> = ({
             })}
           </div>
 
-          {/* Status indicator */}
+          {/* Status indicator and wallet controls */}
           <div className="hidden md:flex items-center gap-4">
             <Badge className="status-low">🟢 Online</Badge>
-            <Button variant="outline" size="sm">
-              <Shield className="h-4 w-4 mr-2" />
-              Connect Wallet
-            </Button>
+            {isConnected ? (
+              <>
+                <Badge variant="outline" className="bg-success/10 text-success">
+                  Connected: {account?.slice(0, 6)}...{account?.slice(-4)}
+                </Badge>
+                {!isCorrectNetwork && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSwitchNetwork}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      "Switch to BlockDAG"
+                    )}
+                  </Button>
+                )}
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={handleDisconnectWallet}
+                  disabled={isLoading}
+                >
+                  <LogOut className="h-4 w-4 " />
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleConnectWallet}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Connect Wallet
+                  </>
+                )}
+              </Button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -96,7 +160,7 @@ const Navigation: React.FC<NavigationProps> = ({
                   <Button
                     key={item.id}
                     variant="ghost"
-                    onClick={() => handleSectionChange(item.id)}
+                    onClick={() => onSectionChange?.(item.id)}
                     className={`w-full justify-start gap-2 ${
                       isActive && "bg-[#0c3355]"
                     }`}
@@ -107,13 +171,63 @@ const Navigation: React.FC<NavigationProps> = ({
                 );
               })}
               <div className="pt-4 mt-4 border-t border-border">
-                <Button variant="outline" className="w-full mb-2">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Connect Wallet
-                </Button>
+                {isConnected ? (
+                  <>
+                    <Badge
+                      variant="outline"
+                      className="w-full justify-center mb-2 bg-success/10 text-success"
+                    >
+                      Connected: {account?.slice(0, 6)}...{account?.slice(-4)}
+                    </Badge>
+                    {!isCorrectNetwork && (
+                      <Button
+                        variant="outline"
+                        className="w-full mb-2"
+                        onClick={handleSwitchNetwork}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          "Switch to BlockDAG"
+                        )}
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="w-full mb-2"
+                      onClick={handleDisconnectWallet}
+                      disabled={isLoading}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Disconnect
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full mb-2"
+                    onClick={handleConnectWallet}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Connect Wallet
+                      </>
+                    )}
+                  </Button>
+                )}
                 <div className="flex justify-center">
                   <Badge className="status-low">🟢 System Online</Badge>
                 </div>
+                {error && (
+                  <div className="flex justify-center mt-2">
+                    <Badge variant="destructive">{error}</Badge>
+                  </div>
+                )}
               </div>
             </div>
           </div>
