@@ -14,7 +14,6 @@ import {
   Droplets,
   Waves,
   Activity,
-  Send,
 } from "lucide-react";
 import {
   connectWallet,
@@ -26,16 +25,13 @@ import {
 import {
   sendDataToContract,
   depositAsSponsor,
-  sendDirectDeposit,
   depositAsInvestor,
   addBeneficiary,
   triggerWithdrawals,
-  manualDisbursement,
   readContractBalance,
   readMyDeposit,
   readOnChainMetrics,
   readFundsInfo,
-  readBeneficiaryInfo,
 } from "@/lib/contractActions";
 import type { FloodMetrics } from "@/types/noaa";
 
@@ -66,10 +62,6 @@ export default function Home() {
     sponsorFunds: string;
     investorFunds: string;
     totalFunds: string;
-  } | null>(null);
-  const [beneficiaryInfo, setBeneficiaryInfo] = useState<{
-    beneficiaryCount: number;
-    canDisburse: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -146,7 +138,6 @@ export default function Home() {
         handleReadOnChainMetrics(),
         handleReadContractBalance(),
         handleReadFundsInfo(),
-        handleReadBeneficiaryInfo(),
       ]);
     } catch (err: any) {
       setTxStatus(null);
@@ -163,24 +154,6 @@ export default function Home() {
       setTxStatus("Processing sponsor deposit...");
       await depositAsSponsor(depositAmount);
       setTxStatus(`Sponsor deposit of ${depositAmount} ETH confirmed!`);
-      await Promise.all([handleReadContractBalance(), handleReadFundsInfo()]);
-    } catch (err: any) {
-      setTxStatus(null);
-      setError(err.message);
-    }
-  };
-
-  const handleDirectDeposit = async (amount?: string) => {
-    const depositAmount =
-      amount || prompt("Enter direct deposit amount in ETH:", "0.1");
-    if (!depositAmount) return;
-
-    try {
-      setTxStatus("Processing direct deposit...");
-      await sendDirectDeposit(depositAmount);
-      setTxStatus(
-        `Direct deposit of ${depositAmount} ETH confirmed! (Treated as sponsor deposit)`
-      );
       await Promise.all([handleReadContractBalance(), handleReadFundsInfo()]);
     } catch (err: any) {
       setTxStatus(null);
@@ -217,7 +190,6 @@ export default function Home() {
       setTxStatus("Adding beneficiary...");
       await addBeneficiary(address);
       setTxStatus("Beneficiary added successfully!");
-      await handleReadBeneficiaryInfo();
     } catch (err: any) {
       setTxStatus(null);
       setError(err.message);
@@ -236,23 +208,6 @@ export default function Home() {
           account && handleReadMyDeposit(),
         ].filter(Boolean)
       );
-    } catch (err: any) {
-      setTxStatus(null);
-      setError(err.message);
-    }
-  };
-
-  const handleManualDisbursement = async () => {
-    try {
-      setTxStatus("Processing manual disbursement...");
-      await manualDisbursement();
-      setTxStatus("Manual disbursement completed!");
-      await Promise.all([
-        handleReadContractBalance(),
-        handleReadFundsInfo(),
-        handleReadBeneficiaryInfo(),
-        account && handleReadMyDeposit(),
-      ]);
     } catch (err: any) {
       setTxStatus(null);
       setError(err.message);
@@ -296,15 +251,6 @@ export default function Home() {
     }
   };
 
-  const handleReadBeneficiaryInfo = async () => {
-    try {
-      const info = await readBeneficiaryInfo();
-      setBeneficiaryInfo(info);
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
   const refreshAllData = async () => {
     if (!isConnected) return;
 
@@ -314,7 +260,6 @@ export default function Home() {
           handleReadContractBalance(),
           handleReadOnChainMetrics(),
           handleReadFundsInfo(),
-          handleReadBeneficiaryInfo(),
           account && handleReadMyDeposit(),
         ].filter(Boolean)
       );
@@ -331,7 +276,6 @@ export default function Home() {
     setOnChainMetrics(null);
     setMyDeposit(null);
     setFundsInfo(null);
-    setBeneficiaryInfo(null);
     setTxStatus(null);
     setError(null);
     setManuallyDisconnected(true);
@@ -378,10 +322,6 @@ export default function Home() {
             Predict flood risks using real-time NOAA data and smart contract
             automation for community protection
           </p>
-          <div className="text-sm text-gray-500 mt-2">
-            ✨ Now anyone can update metrics | Direct deposits supported |
-            Beneficiaries required for disbursement
-          </div>
         </div>
 
         {/* Wallet Connection */}
@@ -507,8 +447,7 @@ export default function Home() {
                   disabled={!floodData || !isConnected || !isCorrectNetwork}
                   className="bg-blue-600 text-white hover:bg-blue-700 contract-action-btn"
                 >
-                  <Send className="mr-2 h-4 w-4" />
-                  Send to Contract
+                  📤 Send to Contract
                 </Button>
               </div>
 
@@ -610,28 +549,10 @@ export default function Home() {
                     {fundsInfo.investorFunds} ETH
                   </div>
                 )}
-                {beneficiaryInfo && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    Beneficiaries: {beneficiaryInfo.beneficiaryCount} • Can
-                    Disburse: {beneficiaryInfo.canDisburse ? "Yes" : "No"}
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Beneficiary Status Alert */}
-        {beneficiaryInfo && beneficiaryInfo.beneficiaryCount === 0 && (
-          <Alert className="border-orange-500 bg-orange-50">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>No Beneficiaries Added:</strong> Funds cannot be disbursed
-              during high threat events until at least one beneficiary is added.
-              Only the contract owner can add beneficiaries.
-            </AlertDescription>
-          </Alert>
-        )}
 
         {/* Contract Actions */}
         <Card className="border-green-200 bg-green-50/60">
@@ -642,20 +563,13 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <Button
                 onClick={() => handleDepositSponsor()}
                 disabled={!isConnected || !isCorrectNetwork}
                 className="contract-action-btn bg-blue-600 hover:bg-blue-700"
               >
                 💰 Sponsor Deposit
-              </Button>
-              <Button
-                onClick={() => handleDirectDeposit()}
-                disabled={!isConnected || !isCorrectNetwork}
-                className="contract-action-btn bg-indigo-600 hover:bg-indigo-700"
-              >
-                💸 Direct Deposit
               </Button>
               <Button
                 onClick={() => handleDepositInvestor()}
@@ -677,20 +591,6 @@ export default function Home() {
                 className="contract-action-btn bg-orange-600 hover:bg-orange-700"
               >
                 💸 Trigger Withdrawals
-              </Button>
-            </div>
-
-            {/* Owner Actions */}
-            <div className="pt-2 border-t border-green-200">
-              <h4 className="text-sm font-semibold text-green-800 mb-2">
-                Owner Actions
-              </h4>
-              <Button
-                onClick={handleManualDisbursement}
-                disabled={!isConnected || !isCorrectNetwork}
-                className="contract-action-btn bg-red-600 hover:bg-red-700"
-              >
-                🚨 Manual Disbursement
               </Button>
             </div>
 
@@ -751,7 +651,7 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* Contract Debug */}
+        {/* Contract Debug (only show if there are connection issues) */}
         <ContractDebug />
 
         {/* Footer */}
