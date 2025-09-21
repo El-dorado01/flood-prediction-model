@@ -1,63 +1,63 @@
-// export interface WaterLevelData {
-//   t: string; // Timestamp, e.g., "2025-09-20 13:30"
-//   v: string; // Value in meters, e.g., "0.306"
-//   s: string; // Sigma
-//   f: string; // Flags
-//   q: string; // Quality
-// }
+export interface WaterLevelData {
+  t: string; // Timestamp, e.g., "2025-09-20 13:30"
+  v: string; // Value in meters, e.g., "0.306"
+  s: string; // Sigma
+  f: string; // Flags
+  q: string; // Quality
+}
 
-// export interface WaterLevelResponse {
-//   data: WaterLevelData[];
-//   metadata: {
-//     id: string;
-//     name: string;
-//     lat: string;
-//     lon: string;
-//   };
-// }
+export interface WaterLevelResponse {
+  data: WaterLevelData[];
+  metadata: {
+    id: string;
+    name: string;
+    lat: string;
+    lon: string;
+  };
+}
 
-// export interface TidePrediction {
-//   t: string; // Timestamp, e.g., "2025-09-20 05:42"
-//   v: string; // Value in meters, e.g., "1.765"
-//   type: "H" | "L"; // High or Low
-// }
+export interface TidePrediction {
+  t: string; // Timestamp, e.g., "2025-09-20 05:42"
+  v: string; // Value in meters, e.g., "1.765"
+  type: "H" | "L"; // High or Low
+}
 
-// export interface TidePredictionResponse {
-//   predictions: TidePrediction[];
-//   metadata: {
-//     id: string;
-//     name: string;
-//     lat: string;
-//     lon: string;
-//   };
-// }
+export interface TidePredictionResponse {
+  predictions: TidePrediction[];
+  metadata: {
+    id: string;
+    name: string;
+    lat: string;
+    lon: string;
+  };
+}
 
-// export interface CurrentPrediction {
-//   Time: string; // Timestamp, e.g., "2025-09-20 13:40"
-//   Depth: string; // Depth in meters, e.g., "16.8"
-//   Velocity_Major: string; // Speed in cm/s, e.g., "43.5"
-//   meanFloodDir: string; // Degrees
-//   meanEbbDir: string; // Degrees
-//   Bin: string;
-// }
+export interface CurrentPrediction {
+  Time: string; // Timestamp, e.g., "2025-09-20 13:40"
+  Depth: string; // Depth in meters, e.g., "16.8"
+  Velocity_Major: string; // Speed in cm/s, e.g., "43.5"
+  meanFloodDir: string; // Degrees
+  meanEbbDir: string; // Degrees
+  Bin: string;
+}
 
-// export interface CurrentPredictionResponse {
-//   current_predictions: {
-//     units: string;
-//     cp: CurrentPrediction[];
-//   };
-// }
+export interface CurrentPredictionResponse {
+  current_predictions: {
+    units: string;
+    cp: CurrentPrediction[];
+  };
+}
 
-// export interface FloodMetrics {
-//   waterLevel: number; // Latest in meters (e.g., 0.306)
-//   tidePrediction: number; // Next high tide in meters (e.g., 1.765)
-//   currentSpeed: number; // Latest in cm/s (e.g., 43.5)
-//   floodRisk: boolean; // Simple assessment
-// }
+export interface FloodMetrics {
+  waterLevel: number; // Latest in meters (e.g., 0.306)
+  tidePrediction: number; // Next high tide in meters (e.g., 1.765)
+  currentSpeed: number; // Latest in cm/s (e.g., 43.5)
+  floodRisk: boolean; // Simple assessment
+}
 
-// export interface APIError {
-//   error: string;
-// }
+export interface APIError {
+  error: string;
+}
 
 
 // Types for NOAA flood prediction data
