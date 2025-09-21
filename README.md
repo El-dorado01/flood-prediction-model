@@ -5,6 +5,9 @@ A decentralized application that leverages real-time NOAA weather data and block
 ## Live Demo
 - https://flood-prediction-model-seven-vercel.app
 
+## Contract Address
+- 0x38338E022EC1a1E4f475609dcA1131b578871fC7
+
 ## Overview
 
 FloodPredictor combines meteorological data with smart contract automation to create a transparent, trustless system for flood risk assessment and emergency fund distribution. The system automatically monitors water levels, tide predictions, and current speeds to determine flood threat levels and manage community funds accordingly.
@@ -125,7 +128,7 @@ cp .env.example .env.local
 
 4. Update `.env.local` with your configuration:
 ```env
-NEXT_PUBLIC_CONTRACT_ADDRESS=0x... # Deployed contract address
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x38338E022EC1a1E4f475609dcA1131b578871fC7 # Deployed contract address
 NEXT_PUBLIC_CHAIN_ID=1043         # BlockDAG testnet
 NEXT_PUBLIC_RPC_URL=https://rpc.primordial.bdagscan.com   # BlockDAG RPC endpoint
 ```
