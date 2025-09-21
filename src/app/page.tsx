@@ -15,6 +15,7 @@ import {
   Waves,
   Activity,
   Send,
+  ExternalLink,
 } from "lucide-react";
 import {
   connectWallet,
@@ -38,6 +39,7 @@ import {
   readBeneficiaryInfo,
 } from "@/lib/contractActions";
 import type { FloodMetrics } from "@/types/noaa";
+import Link from "next/link";
 
 export default function Home() {
   const [isConnected, setIsConnected] = useState(false);
@@ -378,10 +380,19 @@ export default function Home() {
             Predict flood risks using real-time NOAA data and smart contract
             automation for community protection
           </p>
-          <div className="text-sm text-gray-500 mt-2">
-            ✨ Now anyone can update metrics | Direct deposits supported |
-            Beneficiaries required for disbursement
-          </div>
+        </div>
+
+        {/* Live implementation button */}
+        <div className="text-center py-8">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+            Explore Our Live Implementation
+          </h2>
+          <Link
+            href={"/aidfund"}
+            className="w-full sm:w-auto contract-action-btn bg-blue-300 py-2 rounded-md flex items-center justify-center gap-3"
+          >
+            View Life Implementation <ExternalLink />
+          </Link>
         </div>
 
         {/* Wallet Connection */}
