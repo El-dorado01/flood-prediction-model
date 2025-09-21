@@ -2,6 +2,9 @@
 
 A decentralized application that leverages real-time NOAA weather data and blockchain technology to provide flood prediction and community-driven disaster relief funding.
 
+## Live Demo
+- https://flood-prediction-model-seven-vercel.app
+
 ## Overview
 
 FloodPredictor combines meteorological data with smart contract automation to create a transparent, trustless system for flood risk assessment and emergency fund distribution. The system automatically monitors water levels, tide predictions, and current speeds to determine flood threat levels and manage community funds accordingly.
