@@ -112,8 +112,8 @@ FloodPredictor combines meteorological data with smart contract automation to cr
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/El-dorado01/floodpredictor-dapp
-cd floodpredictor-dapp
+git clone https://github.com/El-dorado01/flood-prediction-model
+cd flood-prediction-model
 ```
 
 2. Install dependencies:
